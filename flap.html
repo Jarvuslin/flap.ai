@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Flappy Bird Game</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f0f0f0;
+      font-family: Arial, sans-serif;
+      overflow: hidden;
+    }
+    canvas {
+      border: 2px solid #333;
+      background-color: #70c5ce;
+      width: 100vw;
+      height: 100vh;
+      display: block;
+    }
+    .game-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+    .instructions {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: rgba(255, 255, 255, 0.7);
+      padding: 5px 10px;
+      border-radius: 5px;
+      pointer-events: none;
+      font-size: 1.5vw;
+    }
+    .error-message {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: red;
+      background-color: rgba(255, 255, 255, 0.8);
+      padding: 10px;
+      font-size: 2vw;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="game-container">
+    <canvas id="gameCanvas"></canvas>
+    <div class="instructions" id="instructions"></div>
+    <div class="error-message" id="errorMessage"></div>
+  </div>
+
+  <script>
+    // Game variables
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const instructions = document.getElementById('instructions');
+    const errorMessage = document.getElementById('errorMessage');
+
+    // Set canvas to full screen
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    // Scale factor for game elements based on screen size
+    const baseWidth = 320;
+    const baseHeight = 480;
+    const scaleX = canvas.width / baseWidth;
+    const scaleY = canvas.height / baseHeight;
+    let scale = Math.min(scaleX, scaleY);
+
+    // Game states
+    const GAME_STATE = {
+      READY: 0,
+      PLAYING: 1,
+      GAME_OVER: 2
+    };
+
+    // Game configuration (pipe spacing values reduced for more frequent pipes)
+    const config = {
+      gravity: 0.04,
+      airResistance: 0.99,
+      flapPower: -2.5,
+      birdSize: 30 * scale,
+      pipeWidth: 60 * scale,
+      pipeGap: 200 * scale,
+      basePipeSpacing: 150 * scale,
+      minPipeSpacing: 100 * scale,
+      spacingDecrease: 15 * scale,
+      basePipeSpeed: 1 * scale,
+      maxPipeSpeed: 5 * scale,
+      speedIncrease: 0.1 * scale,
+      scoreFontSize: 40 * scale,
+      messageTimeout: 2000,
+      startGracePeriod: 60,
+      levelThreshold: 3,
+      multiPipeLevel: 2,
+      maxVerticalGapDistance: 100 * scale,
+      minHorizontalSetSpacing: 100 * scale,
+      maxConsecutiveFramesWithoutPipes: 60,
+      cloudSpeed: 0.5 * scale
+    };
+
+    // Cloud shapes with soft shadows for improved appearance
+    const cloudShapes = [
+      (x, y, scale) => {
+        ctx.save();
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.15)';
+        ctx.shadowBlur = 4 * scale;
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(x + 25 * scale, y + 15 * scale, 20 * scale, 0, Math.PI * 2);
+        ctx.arc(x + 10 * scale, y + 15 * scale, 15 * scale, 0, Math.PI * 2);
+        ctx.arc(x + 40 * scale, y + 15 * scale, 15 * scale, 0, Math.PI * 2);
+        ctx.arc(x + 25 * scale, y + 5 * scale, 12 * scale, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      },
+      (x, y, scale) => {
+        ctx.save();
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.15)';
+        ctx.shadowBlur = 4 * scale;
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(x + 30 * scale, y + 15 * scale, 25 * scale, 0, Math.PI * 2);
+        ctx.arc(x + 10 * scale, y + 15 * scale, 18 * scale, 0, Math.PI * 2);
+        ctx.arc(x + 15 * scale, y + 8 * scale, 15 * scale, 0, Math.PI * 2);
+        ctx.arc(x + 50 * scale, y + 15 * scale, 18 * scale, 0, Math.PI * 2);
+        ctx.arc(x + 45 * scale, y + 8 * scale, 15 * scale, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      },
+      (x, y, scale) => {
+        ctx.save();
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.15)';
+        ctx.shadowBlur = 4 * scale;
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(x + 15 * scale, y + 10 * scale, 12 * scale, 0, Math.PI * 2);
+        ctx.arc(x + 30 * scale, y + 10 * scale, 15 * scale, 0, Math.PI * 2);
+        ctx.arc(x + 45 * scale, y + 10 * scale, 12 * scale, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      },
+      (x, y, scale) => {
+        ctx.save();
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.15)';
+        ctx.shadowBlur = 4 * scale;
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(x + 20 * scale, y + 12 * scale, 15 * scale, 0, Math.PI * 2);
+        ctx.arc(x + 40 * scale, y + 12 * scale, 18 * scale, 0, Math.PI * 2);
+        ctx.arc(x + 60 * scale, y + 12 * scale, 15 * scale, 0, Math.PI * 2);
+        ctx.arc(x + 30 * scale, y + 8 * scale, 12 * scale, 0, Math.PI * 2);
+        ctx.arc(x + 50 * scale, y + 8 * scale, 12 * scale, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      },
+      (x, y, scale) => {
+        ctx.save();
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.15)';
+        ctx.shadowBlur = 4 * scale;
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(x + 15 * scale, y + 8 * scale, 10 * scale, 0, Math.PI * 2);
+        ctx.arc(x + 25 * scale, y + 8 * scale, 12 * scale, 0, Math.PI * 2);
+        ctx.arc(x + 20 * scale, y + 4 * scale, 8 * scale, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    ];
+
+    // Function to check cloud overlap
+    function cloudOverlaps(newCloud, existingClouds) {
+      let cloudSize;
+      switch(newCloud.shapeIndex) {
+        case 0: cloudSize = 40 * scale; break;
+        case 1: cloudSize = 50 * scale; break;
+        case 2: cloudSize = 45 * scale; break;
+        case 3: cloudSize = 60 * scale; break;
+        case 4: cloudSize = 25 * scale; break;
+        default: cloudSize = 40 * scale;
+      }
+      const minDistance = cloudSize * 0.8;
+      for (const cloud of existingClouds) {
+        let existingSize;
+        switch(cloud.shapeIndex) {
+          case 0: existingSize = 40 * scale; break;
+          case 1: existingSize = 50 * scale; break;
+          case 2: existingSize = 45 * scale; break;
+          case 3: existingSize = 60 * scale; break;
+          case 4: existingSize = 25 * scale; break;
+          default: existingSize = 40 * scale;
+        }
+        const dx = newCloud.x - cloud.x;
+        const dy = newCloud.y - cloud.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        if (distance < (minDistance + existingSize * 0.8)) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    const clouds = [];
+    const cloudCount = Math.floor((canvas.width * canvas.height) / (120000 * scale));
+    for (let i = 0; i < cloudCount; i++) {
+      let newCloud;
+      let attempts = 0;
+      const maxAttempts = 50;
+      do {
+        const shapeIndex = Math.floor(Math.random() * cloudShapes.length);
+        let width, height;
+        switch(shapeIndex) {
+          case 0: width = 50 * scale; height = 30 * scale; break;
+          case 1: width = 60 * scale; height = 35 * scale; break;
+          case 2: width = 55 * scale; height = 25 * scale; break;
+          case 3: width = 75 * scale; height = 30 * scale; break;
+          case 4: width = 35 * scale; height = 20 * scale; break;
+          default: width = 50 * scale; height = 30 * scale;
+        }
+        newCloud = {
+          x: Math.random() * canvas.width,
+          y: Math.random() * (canvas.height * 0.4),
+          width: width,
+          height: height,
+          shapeIndex: shapeIndex
+        };
+        attempts++;
+      } while (cloudOverlaps(newCloud, clouds) && attempts < maxAttempts);
+      if (attempts < maxAttempts) {
+        clouds.push(newCloud);
+      }
+    }
+
+    // Game objects
+    const game = {
+      state: GAME_STATE.READY,
+      score: 0,
+      frameCount: 0,
+      highScore: 0,
+      graceFrames: 0,
+      currentPipeSpeed: config.basePipeSpeed,
+      currentPipeSpacing: config.basePipeSpacing,
+      devMode: false,
+      level: 1,
+      lastPipeCenterY: canvas.height / 2,
+      framesSinceLastPipe: 0
+    };
+
+    // Detailed bird drawing restored
+    const bird = {
+      x: canvas.width / 3,
+      y: canvas.height / 2,
+      width: config.birdSize,
+      height: config.birdSize,
+      velocity: 0,
+      flapFrame: 0,
+      draw() {
+        try {
+          ctx.save();
+          // Main body
+          ctx.fillStyle = '#ffde00';
+          ctx.fillRect(this.x - this.width/2, this.y - this.height/2, this.width, this.height);
+          // Belly detail
+          ctx.fillStyle = '#ff9000';
+          ctx.fillRect(this.x - this.width/2, this.y, this.width/2, this.height/3);
+          // Black outline for pixel art style
+          ctx.fillStyle = '#000000';
+          ctx.fillRect(this.x - this.width/2 - 2 * scale, this.y - this.height/2 - 2 * scale, this.width + 4 * scale, 2 * scale);
+          ctx.fillRect(this.x - this.width/2 - 2 * scale, this.y + this.height/2, this.width + 4 * scale, 2 * scale);
+          ctx.fillRect(this.x - this.width/2 - 2 * scale, this.y - this.height/2, 2 * scale, this.height);
+          ctx.fillRect(this.x + this.width/2, this.y - this.height/2, 2 * scale, this.height);
+          // Eye
+          ctx.fillStyle = 'white';
+          ctx.beginPath();
+          ctx.arc(this.x + this.width/4, this.y - this.height/6, this.width/6, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = 'black';
+          ctx.beginPath();
+          ctx.arc(this.x + this.width/4, this.y - this.height/6, this.width/6 + 1 * scale, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = 'white';
+          ctx.beginPath();
+          ctx.arc(this.x + this.width/4, this.y - this.height/6, this.width/6, 0, Math.PI * 2);
+          ctx.fill();
+          // Pupil and highlight
+          ctx.fillStyle = 'black';
+          ctx.beginPath();
+          ctx.arc(this.x + this.width/4 + 2 * scale, this.y - this.height/6, this.width/12, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = 'white';
+          ctx.fillRect(this.x + this.width/4 + 1 * scale, this.y - this.height/6 - 2 * scale, 2 * scale, 2 * scale);
+          // Beak
+          ctx.fillStyle = '#ff5400';
+          ctx.fillRect(this.x + this.width/4, this.y, this.width/3, this.height/4);
+          ctx.fillStyle = '#cc4000';
+          ctx.fillRect(this.x + this.width/4, this.y + this.height/8, this.width/3, this.height/8);
+          ctx.fillStyle = '#000000';
+          ctx.fillRect(this.x + this.width/4 - 1 * scale, this.y - 1 * scale, 1 * scale, this.height/4 + 2 * scale);
+          ctx.fillRect(this.x + this.width/4 + this.width/3, this.y - 1 * scale, 1 * scale, this.height/4 + 2 * scale);
+          ctx.fillRect(this.x + this.width/4, this.y + this.height/4, this.width/3, 1 * scale);
+          // Wing detail with animation
+          if (game.frameCount % 10 < 5) {
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(this.x - this.width/2 - 2 * scale, this.y - this.height/4 - 2 * scale, this.width/2 + 4 * scale, 2 * scale);
+            ctx.fillRect(this.x - this.width/2 - 2 * scale, this.y - this.height/4, 2 * scale, this.height/4);
+            ctx.fillRect(this.x - this.width/2 - 2 * scale, this.y, this.width/2 + 4 * scale, 2 * scale);
+            ctx.fillStyle = '#ffde00';
+            ctx.fillRect(this.x - this.width/2, this.y - this.height/4, this.width/2, this.height/4);
+            ctx.fillStyle = '#fff9a3';
+            ctx.fillRect(this.x - this.width/2, this.y - this.height/4, this.width/2, 3 * scale);
+          } else {
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(this.x - this.width/2 - 2 * scale, this.y + this.height/8 - 2 * scale, this.width/2 + 4 * scale, 2 * scale);
+            ctx.fillRect(this.x - this.width/2 - 2 * scale, this.y + this.height/8, 2 * scale, this.height/4);
+            ctx.fillRect(this.x - this.width/2 - 2 * scale, this.y + this.height/8 + this.height/4, this.width/2 + 4 * scale, 2 * scale);
+            ctx.fillStyle = '#ffde00';
+            ctx.fillRect(this.x - this.width/2, this.y + this.height/8, this.width/2, this.height/4);
+            ctx.fillStyle = '#e5c700';
+            ctx.fillRect(this.x - this.width/2, this.y + this.height/8 + this.height/4 - 3 * scale, this.width/2, 3 * scale);
+          }
+          // Top highlight and bottom shadow
+          ctx.fillStyle = '#fff9a3';
+          ctx.fillRect(this.x - this.width/2, this.y - this.height/2, this.width, 4 * scale);
+          ctx.fillStyle = '#e5c700';
+          ctx.fillRect(this.x - this.width/2, this.y + this.height/2 - 4 * scale, this.width, 4 * scale);
+          if (game.devMode) {
+            ctx.strokeStyle = 'red';
+            ctx.lineWidth = 2 * scale;
+            ctx.strokeRect(this.x - this.width/2, this.y - this.height/2, this.width, this.height);
+          }
+          ctx.restore();
+        } catch (e) {
+          console.error("Error drawing bird:", e);
+          showError("Failed to draw bird: " + e.message);
+        }
+      },
+      update() {
+        if (game.graceFrames > 0) {
+          game.graceFrames--;
+        } else {
+          this.velocity += config.gravity;
+          this.velocity *= config.airResistance;
+        }
+        this.y += this.velocity;
+        if (this.y - this.height / 2 < 0) {
+          this.y = this.height / 2;
+          this.velocity = 0;
+        } else if (this.y + this.height / 2 > canvas.height - 20 * scale) {
+          this.y = canvas.height - 20 * scale - this.height / 2;
+          if (!game.devMode) {
+            gameOver();
+          } else {
+            this.velocity = 0;
+          }
+        }
+      },
+      flap() {
+        this.velocity = config.flapPower * scale;
+        this.flapFrame = 3;
+      },
+      reset() {
+        this.x = canvas.width / 3;
+        this.y = canvas.height / 2;
+        this.velocity = 0;
+      }
+    };
+
+    // Pipe management with increased vertical variance
+    const pipes = {
+      list: [],
+      update() {
+        game.level = Math.floor(game.score / config.levelThreshold) + 1;
+        game.currentPipeSpacing = Math.max(
+          config.basePipeSpacing - (game.level * config.spacingDecrease),
+          config.minPipeSpacing
+        );
+        game.currentPipeSpeed = Math.min(
+          config.basePipeSpeed + ((game.level - 1) * config.speedIncrease),
+          config.maxPipeSpeed
+        );
+        if (this.list.length === 0) {
+          game.framesSinceLastPipe++;
+        }
+        if ((game.frameCount % Math.floor(game.currentPipeSpacing) === 0 ||
+             this.list.length === 0 ||
+             game.framesSinceLastPipe > config.maxConsecutiveFramesWithoutPipes) &&
+            this.list.length < 5) {
+          let minPipes = 1;
+          let maxPipes = 2;
+          if (game.level >= config.multiPipeLevel) {
+            minPipes = Math.max(2, game.level - 1);
+            maxPipes = Math.min(5, game.level + 1);
+          }
+          let pipesToSpawn = Math.floor(Math.random() * (maxPipes - minPipes + 1)) + minPipes;
+          pipesToSpawn = Math.min(pipesToSpawn, 5 - this.list.length);
+          let canSpawn = false;
+          if (this.list.length === 0 || this.list[this.list.length - 1].x < canvas.width - (pipesToSpawn * (config.pipeWidth + 20 * scale) + config.minHorizontalSetSpacing * 0.7)) {
+            let baseCenterY;
+            let attempts = 0;
+            const maxAttempts = 10;
+            while (!canSpawn && attempts < maxAttempts) {
+              // New range: from (pipeGap/2 + 10) to (canvas.height - pipeGap/2 - 10)
+              baseCenterY = Math.random() * (canvas.height - (config.pipeGap + 20 * scale)) + (config.pipeGap/2 + 10 * scale);
+              const topY = baseCenterY - config.pipeGap / 2;
+              const bottomY = baseCenterY + config.pipeGap / 2;
+              if (topY > config.birdSize + 10 * scale && bottomY < canvas.height - (config.birdSize + 10 * scale)) {
+                canSpawn = true;
+              }
+              attempts++;
+            }
+            if (canSpawn) {
+              for (let i = 0; i < pipesToSpawn; i++) {
+                const centerY = Math.max(config.pipeGap / 2 + 10 * scale,
+                  Math.min(baseCenterY + (Math.random() * 100 * scale - 50 * scale), canvas.height - config.pipeGap / 2 - 10 * scale));
+                this.list.push({
+                  x: canvas.width + (i * (config.pipeWidth + 20 * scale)),
+                  topY: centerY - config.pipeGap / 2,
+                  bottomY: centerY + config.pipeGap / 2,
+                  scored: false
+                });
+              }
+              game.lastPipeCenterY = baseCenterY;
+              game.framesSinceLastPipe = 0;
+            }
+          }
+        }
+        for (let i = 0; i < this.list.length; i++) {
+          const pipe = this.list[i];
+          pipe.x -= game.currentPipeSpeed;
+          if (!game.devMode && this.checkCollision(pipe)) {
+            gameOver();
+          }
+          if (!pipe.scored && pipe.x + config.pipeWidth < bird.x) {
+            pipe.scored = true;
+            game.score++;
+          }
+        }
+        this.list = this.list.filter(pipe => pipe.x + config.pipeWidth > 0);
+      },
+      draw() {
+        try {
+          ctx.fillStyle = '#2ecc71';
+          for (const pipe of this.list) {
+            ctx.fillRect(pipe.x, 0, config.pipeWidth, pipe.topY);
+            ctx.fillRect(pipe.x, pipe.bottomY, config.pipeWidth, canvas.height - pipe.bottomY);
+            ctx.fillStyle = '#27ae60';
+            ctx.fillRect(pipe.x - 5 * scale, pipe.topY - 15 * scale, config.pipeWidth + 10 * scale, 15 * scale);
+            ctx.fillStyle = '#229954';
+            ctx.fillRect(pipe.x - 5 * scale, pipe.topY - 15 * scale, config.pipeWidth + 10 * scale, 3 * scale);
+            ctx.fillStyle = '#27ae60';
+            ctx.fillRect(pipe.x - 5 * scale, pipe.bottomY, config.pipeWidth + 10 * scale, 15 * scale);
+            ctx.fillStyle = '#229954';
+            ctx.fillRect(pipe.x - 5 * scale, pipe.bottomY, config.pipeWidth + 10 * scale, 3 * scale);
+            ctx.fillStyle = '#2ecc71';
+          }
+        } catch (e) {
+          console.error("Error drawing pipes:", e);
+          showError("Failed to draw pipes: " + e.message);
+        }
+      },
+      checkCollision(pipe) {
+        const birdHitboxSize = bird.width - 6 * scale;
+        const birdLeft = bird.x - birdHitboxSize / 2;
+        const birdRight = bird.x + birdHitboxSize / 2;
+        const birdTop = bird.y - birdHitboxSize / 2;
+        const birdBottom = bird.y + birdHitboxSize / 2;
+        if (birdRight > pipe.x && birdLeft < pipe.x + config.pipeWidth) {
+          if (birdTop < pipe.topY || birdBottom > pipe.bottomY) {
+            return true;
+          }
+        }
+        return false;
+      },
+      reset() {
+        this.list = [];
+        game.lastPipeCenterY = canvas.height / 2;
+      }
+    };
+
+    function gameOver() {
+      game.state = GAME_STATE.GAME_OVER;
+      if (game.score > game.highScore) {
+        game.highScore = game.score;
+      }
+    }
+
+    function startGame() {
+      game.state = GAME_STATE.PLAYING;
+      game.score = 0;
+      game.frameCount = 0;
+      game.graceFrames = config.startGracePeriod;
+      game.currentPipeSpeed = config.basePipeSpeed;
+      game.currentPipeSpacing = config.basePipeSpacing;
+      game.devMode = false;
+      game.level = 1;
+      bird.reset();
+      bird.flap();
+      pipes.reset();
+      instructions.style.display = "none";
+    }
+
+    function drawBackground() {
+      try {
+        ctx.fillStyle = '#70c5ce';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        for (const cloud of clouds) {
+          cloud.x -= config.cloudSpeed;
+          if (cloud.x + cloud.width < 0) {
+            cloud.x = canvas.width;
+            cloud.y = Math.random() * (canvas.height * 0.4);
+            cloud.shapeIndex = Math.floor(Math.random() * cloudShapes.length);
+            switch(cloud.shapeIndex) {
+              case 0: cloud.width = 50 * scale; cloud.height = 30 * scale; break;
+              case 1: cloud.width = 60 * scale; cloud.height = 35 * scale; break;
+              case 2: cloud.width = 55 * scale; cloud.height = 25 * scale; break;
+              case 3: cloud.width = 75 * scale; cloud.height = 30 * scale; break;
+              case 4: cloud.width = 35 * scale; cloud.height = 20 * scale; break;
+              default: cloud.width = 50 * scale; cloud.height = 30 * scale;
+            }
+            let attempts = 0;
+            const maxAttempts = 20;
+            let overlapping = true;
+            while (overlapping && attempts < maxAttempts) {
+              const rightSideClouds = clouds.filter(c => c !== cloud && c.x > canvas.width * 0.7);
+              overlapping = cloudOverlaps(cloud, rightSideClouds);
+              if (overlapping) {
+                cloud.y = Math.random() * (canvas.height * 0.4);
+                cloud.x += 20 * scale;
+              }
+              attempts++;
+            }
+          }
+          cloudShapes[cloud.shapeIndex](cloud.x, cloud.y, scale);
+        }
+        ctx.fillStyle = '#dec982';
+        ctx.fillRect(0, canvas.height - 20 * scale, canvas.width, 20 * scale);
+        ctx.fillStyle = '#5d9e5a';
+        ctx.fillRect(0, canvas.height - 20 * scale, canvas.width, 5 * scale);
+        ctx.fillStyle = '#4a8a47';
+        for (let i = 0; i < canvas.width; i += 8 * scale) {
+          ctx.fillRect(i, canvas.height - 20 * scale, 4 * scale, 2 * scale);
+        }
+      } catch (e) {
+        console.error("Error drawing background:", e);
+        showError("Failed to draw background: " + e.message);
+      }
+    }
+
+    function drawScore() {
+      try {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+        ctx.font = `${config.scoreFontSize + 2}px 'Courier New', monospace`;
+        ctx.textAlign = 'center';
+        ctx.fillText(game.score.toString(), canvas.width / 2 + 2 * scale, 52 * scale);
+        ctx.fillStyle = 'white';
+        ctx.font = `${config.scoreFontSize}px 'Courier New', monospace`;
+        ctx.fillText(game.score.toString(), canvas.width / 2, 50 * scale);
+        if (game.state === GAME_STATE.GAME_OVER) {
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          const gameOverScale = 1 + 0.1 * Math.sin(Date.now() / 200);
+          ctx.save();
+          ctx.translate(canvas.width / 2, 120 * scale);
+          ctx.scale(gameOverScale, gameOverScale);
+          ctx.fillStyle = '#FF5252';
+          ctx.font = `bold ${30 * scale}px "Courier New", monospace`;
+          ctx.fillText('GAME OVER', 0, 0);
+          ctx.restore();
+          const boxWidth = 200 * scale;
+          const boxHeight = 120 * scale;
+          const boxX = (canvas.width - boxWidth) / 2;
+          const boxY = (canvas.height - boxHeight) / 2;
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+          ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+          ctx.strokeStyle = '#333';
+          ctx.lineWidth = 4 * scale;
+          ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
+          ctx.fillStyle = '#333';
+          ctx.font = `bold ${22 * scale}px "Courier New", monospace`;
+          ctx.fillText('YOUR SCORE', canvas.width / 2, boxY + 30 * scale);
+          ctx.font = `bold ${28 * scale}px "Courier New", monospace`;
+          ctx.fillText(`${game.score}`, canvas.width / 2, boxY + 65 * scale);
+          ctx.font = `bold ${18 * scale}px "Courier New", monospace`;
+          ctx.fillText(`HIGH SCORE: ${game.highScore}`, canvas.width / 2, boxY + 95 * scale);
+          ctx.font = `${16 * scale}px "Courier New", monospace`;
+          ctx.fillText('PRESS SPACE OR CLICK TO RESTART', canvas.width / 2, boxY + boxHeight + 30 * scale);
+        }
+        if (game.devMode) {
+          ctx.font = `${16 * scale}px "Courier New", monospace`;
+          ctx.fillStyle = 'red';
+          ctx.fillText('DEV MODE', canvas.width / 2, 20 * scale);
+        }
+        ctx.font = `${16 * scale}px "Courier New", monospace`;
+        ctx.fillStyle = 'white';
+        ctx.fillText(`Level: ${game.level}`, canvas.width / 2, 80 * scale);
+      } catch (e) {
+        console.error("Error drawing score:", e);
+        showError("Failed to draw score: " + e.message);
+      }
+    }
+
+    function drawReadyScreen() {
+      try {
+        ctx.fillStyle = 'white';
+        ctx.font = `bold ${24 * scale}px "Courier New", monospace`;
+        ctx.textAlign = 'center';
+        ctx.fillText('FLAP.AI', canvas.width / 2, 150 * scale);
+        ctx.font = `${16 * scale}px "Courier New", monospace`;
+        ctx.fillText('PRESS SPACE OR LEFT CLICK TO START', canvas.width / 2, 200 * scale);
+        if (Math.floor(Date.now() / 500) % 2 === 0) {
+          ctx.fillText('*  PRESS START  *', canvas.width / 2, 230 * scale);
+        }
+      } catch (e) {
+        console.error("Error drawing ready screen:", e);
+        showError("Failed to draw ready screen: " + e.message);
+      }
+    }
+
+    function showError(message) {
+      errorMessage.textContent = message;
+      errorMessage.style.display = "block";
+    }
+
+    function gameLoop() {
+      try {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawBackground();
+        if (game.state === GAME_STATE.PLAYING) {
+          game.frameCount++;
+          bird.update();
+          pipes.update();
+          pipes.draw();
+          bird.draw();
+          drawScore();
+        } else if (game.state === GAME_STATE.READY) {
+          bird.draw();
+          drawReadyScreen();
+        } else if (game.state === GAME_STATE.GAME_OVER) {
+          pipes.draw();
+          bird.draw();
+          drawScore();
+        }
+      } catch (error) {
+        console.error("Error in game loop:", error);
+        showError("Game loop failed: " + error.message);
+      }
+      requestAnimationFrame(gameLoop);
+    }
+
+    window.addEventListener('resize', () => {
+      try {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        const newScaleX = canvas.width / baseWidth;
+        const newScaleY = canvas.height / baseHeight;
+        scale = Math.min(newScaleX, newScaleY);
+        config.birdSize = 30 * scale;
+        config.pipeWidth = 60 * scale;
+        config.pipeGap = 200 * scale;
+        config.basePipeSpacing = 150 * scale;
+        config.minPipeSpacing = 100 * scale;
+        config.spacingDecrease = 15 * scale;
+        config.basePipeSpeed = 1 * scale;
+        config.maxPipeSpeed = 5 * scale;
+        config.speedIncrease = 0.1 * scale;
+        config.scoreFontSize = 40 * scale;
+        config.maxVerticalGapDistance = 100 * scale;
+        config.minHorizontalSetSpacing = 100 * scale;
+        config.cloudSpeed = 0.5 * scale;
+        bird.width = config.birdSize;
+        bird.height = config.birdSize;
+        bird.x = canvas.width / 3;
+        bird.y = canvas.height / 2;
+        game.lastPipeCenterY = canvas.height / 2;
+        clouds.length = 0;
+        const newCloudCount = Math.floor((canvas.width * canvas.height) / (120000 * scale));
+        for (let i = 0; i < newCloudCount; i++) {
+          let newCloud;
+          let attempts = 0;
+          const maxAttempts = 50;
+          do {
+            const shapeIndex = Math.floor(Math.random() * cloudShapes.length);
+            let width, height;
+            switch(shapeIndex) {
+              case 0: width = 50 * scale; height = 30 * scale; break;
+              case 1: width = 60 * scale; height = 35 * scale; break;
+              case 2: width = 55 * scale; height = 25 * scale; break;
+              case 3: width = 75 * scale; height = 30 * scale; break;
+              case 4: width = 35 * scale; height = 20 * scale; break;
+              default: width = 50 * scale; height = 30 * scale;
+            }
+            newCloud = {
+              x: Math.random() * canvas.width,
+              y: Math.random() * (canvas.height * 0.4),
+              width: width,
+              height: height,
+              shapeIndex: shapeIndex
+            };
+            attempts++;
+          } while (cloudOverlaps(newCloud, clouds) && attempts < maxAttempts);
+          if (attempts < maxAttempts) {
+            clouds.push(newCloud);
+          }
+        }
+      } catch (e) {
+        console.error("Error on resize:", e);
+        showError("Resize failed: " + e.message);
+      }
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.code === 'Space') {
+        event.preventDefault();
+        if (game.state === GAME_STATE.READY || game.state === GAME_STATE.GAME_OVER) {
+          startGame();
+        } else if (game.state === GAME_STATE.PLAYING) {
+          bird.flap();
+        }
+      }
+      if (event.ctrlKey && event.code === 'KeyQ') {
+        event.preventDefault();
+        if (game.state === GAME_STATE.PLAYING) {
+          game.devMode = !game.devMode;
+          console.log('Dev Mode:', game.devMode ? 'ON' : 'OFF');
+        }
+      }
+      if (event.ctrlKey && event.code === 'KeyE') {
+        event.preventDefault();
+        if (game.state === GAME_STATE.PLAYING) {
+          gameOver();
+        }
+      }
+    });
+
+    canvas.addEventListener('click', () => {
+      if (game.state === GAME_STATE.READY || game.state === GAME_STATE.GAME_OVER) {
+        startGame();
+      } else if (game.state === GAME_STATE.PLAYING) {
+        bird.flap();
+      }
+    });
+
+    canvas.addEventListener('touchstart', (event) => {
+      event.preventDefault();
+      if (game.state === GAME_STATE.READY || game.state === GAME_STATE.GAME_OVER) {
+        startGame();
+      } else if (game.state === GAME_STATE.PLAYING) {
+        bird.flap();
+      }
+    });
+
+    gameLoop();
+  </script>
+</body>
+</html>
