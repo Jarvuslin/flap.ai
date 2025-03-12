@@ -1,215 +1,240 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FLAP.AI MENU</title>
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-    <style>
-        body {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #70c5ce;
-            font-family: 'Press Start 2P', cursive;
-            overflow: hidden;
-        }
-        
-        .game-container {
-            text-align: center;
-            position: relative;
-            width: 500px;
-            height: 400px;
-            background-color: #70c5ce;
-            border: 6px solid #333;
-            border-radius: 10px;
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            overflow: hidden;
-        }
-        
-        .title-container {
-            margin-bottom: 30px;
-            animation: float 3s ease-in-out infinite;
-        }
-        
-        .title {
-            font-size: 36px;
-            color: #FFD700;
-            text-shadow: 4px 4px #333, -2px -2px 0 #FF6347;
-            letter-spacing: 2px;
-            transform-origin: center;
-            animation: pulse 2s ease-in-out infinite;
-        }
-        
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FLAP.AI MENU</title>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      background-color: #70c5ce;
+      font-family: 'Press Start 2P', cursive;
+      overflow: hidden;
+    }
     
-        
-        
-        .menu {
-            margin-top: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            z-index: 10;
-        }
-        
-        .menu-item {
-            font-size: 18px;
-            color: white;
-            text-shadow: 2px 2px #333;
-            cursor: pointer;
-            padding: 12px 25px;
-            background-color: rgba(76, 175, 80, 0.8);
-            border: 3px solid #2E7D32;
-            border-radius: 8px;
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .menu-item:hover {
-            color: #FFEB3B;
-            background-color: rgba(76, 175, 80, 1);
-            transform: scale(1.05);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-        }
-        
-        .menu-item:active {
-            transform: scale(0.95);
-        }
-        
-        .ground {
-            position: absolute;
-            bottom: 0;
-            width: 100%;
-            height: 60px;
-            background-color: #8B4513;
-            border-top: 4px solid #654321;
-            z-index: 5;
-        }
-        
-        .grass {
-            position: absolute;
-            bottom: 60px;
-            width: 100%;
-            height: 10px;
-            background-color: #4CAF50;
-            z-index: 5;
-        }
-        
-        .grass::after {
-            content: "";
-            position: absolute;
-            bottom: 0;
-            width: 100%;
-            height: 5px;
-            background-color: #388E3C;
-        }
-        
-        .cloud {
-            position: absolute;
-            width: 70px;
-            height: 30px;
-            background-color: white;
-            border-radius: 15px;
-            opacity: 0.9;
-            z-index: 1;
-        }
-        
-        .cloud::before, .cloud::after {
-            content: "";
-            position: absolute;
-            background-color: white;
-            border-radius: 50%;
-        }
-        
-        .cloud::before {
-            width: 40px;
-            height: 40px;
-            left: -15px;
-            top: -15px;
-        }
-        
-        .cloud::after {
-            width: 40px;
-            height: 40px;
-            right: -15px;
-            top: -15px;
-        }
-        
-        #cloud1 {
-            top: 50px;
-            left: 50px;
-            animation: cloudMove 25s linear infinite;
-        }
-        
-        #cloud2 {
-            top: 100px;
-            right: -70px;
-            animation: cloudMove 20s linear infinite 5s;
-        }
-        
-        #cloud3 {
-            top: 150px;
-            left: -70px;
-            animation: cloudMove 30s linear infinite 10s;
-        }
-        
-        @keyframes cloudMove {
-            0% { transform: translateX(-70px); }
-            100% { transform: translateX(570px); }
-        }
-        
-        @keyframes birdFloat {
-            0%, 100% { transform: translateX(-50%) translateY(0); }
-            50% { transform: translateX(-50%) translateY(-15px); }
-        }
-        
-        @keyframes float {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
-        }
-        
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-        }
-    </style>
+    .game-container {
+      text-align: center;
+      position: relative;
+      width: 500px;
+      height: 400px;
+      background-color: #70c5ce;
+      border: 6px solid #333;
+      border-radius: 10px;
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+    }
+    
+    .title-container {
+      margin-bottom: 30px;
+      animation: float 3s ease-in-out infinite;
+    }
+    
+    .title {
+      font-size: 36px;
+      color: #FFD700;
+      text-shadow: 4px 4px #333, -2px -2px 0 #FF6347;
+      letter-spacing: 2px;
+      transform-origin: center;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    
+    .menu {
+      margin-top: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      z-index: 10;
+    }
+    
+    .menu-item {
+      font-size: 18px;
+      color: white;
+      text-shadow: 2px 2px #333;
+      cursor: pointer;
+      padding: 12px 25px;
+      background-color: rgba(76, 175, 80, 0.8);
+      border: 3px solid #2E7D32;
+      border-radius: 8px;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .menu-item:hover {
+      color: #FFEB3B;
+      background-color: rgba(76, 175, 80, 1);
+      transform: scale(1.05);
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    }
+    
+    .menu-item:active {
+      transform: scale(0.95);
+    }
+    
+    .ground {
+      position: absolute;
+      bottom: 0;
+      width: 100%;
+      height: 60px;
+      background-color: #8B4513;
+      border-top: 4px solid #654321;
+      z-index: 5;
+    }
+    
+    .grass {
+      position: absolute;
+      bottom: 60px;
+      width: 100%;
+      height: 10px;
+      background-color: #4CAF50;
+      z-index: 5;
+    }
+    
+    .grass::after {
+      content: "";
+      position: absolute;
+      bottom: 0;
+      width: 100%;
+      height: 5px;
+      background-color: #388E3C;
+    }
+    
+    /* Detailed Cloud Styling - Smaller and more delicate */
+    .cloud {
+      position: absolute;
+      background: #fff;
+      border-radius: 50%;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      opacity: 0.85;
+      animation: cloudFloat 30s linear infinite;
+    }
+    
+    .cloud::before,
+    .cloud::after {
+      content: "";
+      position: absolute;
+      background: #fff;
+      border-radius: 50%;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+    
+    /* Variation 1: Small Cloud */
+    .cloud.small {
+      width: 40px;
+      height: 25px;
+    }
+    
+    .cloud.small::before {
+      width: 25px;
+      height: 25px;
+      top: -12px;
+      left: 3px;
+    }
+    
+    .cloud.small::after {
+      width: 20px;
+      height: 20px;
+      top: -8px;
+      right: -8px;
+    }
+    
+    /* Variation 2: Medium Cloud */
+    .cloud.medium {
+      width: 70px;
+      height: 40px;
+    }
+    
+    .cloud.medium::before {
+      width: 50px;
+      height: 50px;
+      top: -20px;
+      left: 5px;
+    }
+    
+    .cloud.medium::after {
+      width: 35px;
+      height: 35px;
+      top: -15px;
+      right: 0px;
+    }
+    
+    /* Variation 3: Large Cloud */
+    .cloud.large {
+      width: 90px;
+      height: 50px;
+    }
+    
+    .cloud.large::before {
+      width: 60px;
+      height: 60px;
+      top: -25px;
+      left: 10px;
+    }
+    
+    .cloud.large::after {
+      width: 45px;
+      height: 45px;
+      top: -20px;
+      right: 5px;
+    }
+    
+    /* Cloud Float Animation */
+    @keyframes cloudFloat {
+      0% { transform: translateX(-50px); }
+      50% { transform: translateX(50px); }
+      100% { transform: translateX(-50px); }
+    }
+    
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+    
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+  </style>
 </head>
 <body>
-    <div class="game-container">
-        <div class="cloud" id="cloud1"></div>
-        <div class="cloud" id="cloud2"></div>
-        <div class="cloud" id="cloud3"></div>
-        
-        <div class="bird"></div>
-        
-        <div class="title-container">
-            <div class="title">FLAP.AI</div>
-        </div>
-        
-        <div class="menu">
-            <div class="menu-item" onclick="startGame(1)">▶ 1 PLAYER</div>
-            <div class="menu-item" onclick="startGame(2)">▶ 2 PLAYERS</div>
-        </div>
-        
-        <div class="grass"></div>
-        <div class="ground"></div>
+  <div class="game-container">
+    <!-- Multiple detailed clouds with smaller sizes and variations -->
+    <div class="cloud small" style="top: 20px; left: 30px; animation-duration: 25s;"></div>
+    <div class="cloud medium" style="top: 60px; right: 40px; animation-duration: 30s;"></div>
+    <div class="cloud large" style="top: 100px; left: 100px; animation-duration: 35s;"></div>
+    <div class="cloud medium" style="top: 150px; right: 80px; animation-duration: 28s;"></div>
+    <div class="cloud small" style="top: 80px; left: 200px; animation-duration: 32s;"></div>
+    
+    <div class="title-container">
+      <div class="title">FLAP.AI</div>
     </div>
+    
+    <div class="menu">
+      <div class="menu-item" onclick="startGame(1)">▶ 1 PLAYER</div>
+      <div class="menu-item" onclick="startGame(2)">▶ 2 PLAYERS</div>
+    </div>
+    
+    <div class="grass"></div>
+    <div class="ground"></div>
+  </div>
 
-    <script>
-        function startGame(players) {
-            if (players === 1) {
-                window.location.href = "flap.html"; // Redirect to the game
-            } else {
-                alert("Multiplayer coming soon!"); // Placeholder for now
-            }
-        }
-    </script>    
+  <script>
+    function startGame(players) {
+      if (players === 1) {
+        window.location.href = "flap.html"; // Redirect to the game
+      } else {
+        alert("Multiplayer coming soon!"); // Placeholder for now
+      }
+    }
+  </script>    
 </body>
 </html>
