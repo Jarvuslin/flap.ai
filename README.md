@@ -4,8 +4,8 @@ Flap.AI is an engaging browser-based HTML game inspired by the classic Flappy Bi
 
 ## Live Demo
 
-Play the game online using GitHub Pages:  
-[https://jarvuslin.github.io/flap.ai/flap.html](https://jarvuslin.github.io/flap.ai/)
+Play the game online using GitHub Pages:
+[https://jarvuslin.github.io/flap.ai/flap.html](https://jarvuslin.github.io/flap.ai/flap.html)
 
 ## Description
 
