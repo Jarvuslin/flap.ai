@@ -61,6 +61,7 @@
     const ctx = canvas.getContext('2d');
     const instructions = document.getElementById('instructions');
     const errorMessage = document.getElementById('errorMessage');
+    instructions.textContent = 'SPACE/CLICK TO FLAP - P TO PAUSE - COLLECT \u2605 FOR BONUS POINTS - SCORE 20 FOR NEW COLORS';
 
     // Set canvas to full screen
     canvas.width = window.innerWidth;
@@ -104,6 +105,20 @@
       maxConsecutiveFramesWithoutPipes: 60,
       cloudSpeed: 0.5 * scale
     };
+
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function playBeep(freq, duration) {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.frequency.value = freq;
+      osc.type = 'square';
+      osc.start();
+      gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration/1000);
+      osc.stop(audioCtx.currentTime + duration/1000);
+    }
 
     // Cloud shapes with soft shadows for improved appearance
     const cloudShapes = [
@@ -206,8 +221,8 @@
       return false;
     }
 
-    const clouds = [];
-    const cloudCount = Math.floor((canvas.width * canvas.height) / (120000 * scale));
+const clouds = [];
+const cloudCount = Math.floor((canvas.width * canvas.height) / (120000 * scale));
     for (let i = 0; i < cloudCount; i++) {
       let newCloud;
       let attempts = 0;
@@ -232,9 +247,19 @@
         };
         attempts++;
       } while (cloudOverlaps(newCloud, clouds) && attempts < maxAttempts);
-      if (attempts < maxAttempts) {
-        clouds.push(newCloud);
-      }
+    if (attempts < maxAttempts) {
+      clouds.push(newCloud);
+    }
+}
+
+    const stars = [];
+    function spawnStar() {
+      stars.push({
+        x: canvas.width,
+        y: Math.random() * (canvas.height * 0.6) + 20 * scale,
+        size: 10 * scale,
+        collected: false
+      });
     }
 
     // Game objects
@@ -243,6 +268,7 @@
       score: 0,
       frameCount: 0,
       highScore: 0,
+      paused: false,
       graceFrames: 0,
       currentPipeSpeed: config.basePipeSpeed,
       currentPipeSpacing: config.basePipeSpacing,
@@ -279,6 +305,17 @@
       '#e0802c'
     ];
 
+    const birdPaletteAlt = [
+      '#000000',
+      '#003366',
+      '#99ccff',
+      '#ffffff',
+      '#3399ff',
+      '#d7e6cc',
+      '#ff66cc',
+      '#ff99cc'
+    ];
+
     const bird = {
       x: canvas.width / 3,
       y: canvas.height / 2,
@@ -290,9 +327,12 @@
           ctx.save();
           const pixelWidth = this.width / birdPixels[0].length;
           const pixelHeight = this.height / birdPixels.length;
+          const palette = game.highScore >= 20 ? birdPaletteAlt : birdPalette;
           for (let r = 0; r < birdPixels.length; r++) {
             for (let c = 0; c < birdPixels[r].length; c++) {
-              const color = birdPalette[birdPixels[r][c]];
+              const index = birdPixels[r][c];
+              if (index === 0) continue;
+              const color = palette[index];
               ctx.fillStyle = color;
               ctx.fillRect(
                 this.x - this.width/2 + c * pixelWidth,
@@ -336,6 +376,7 @@
       flap() {
         this.velocity = config.flapPower * scale;
         this.flapFrame = 3;
+        playBeep(600, 100);
       },
       reset() {
         this.x = canvas.width / 3;
@@ -357,6 +398,7 @@
           config.basePipeSpeed + ((game.level - 1) * config.speedIncrease),
           config.maxPipeSpeed
         );
+        const gap = Math.max(config.pipeGap - (game.level - 1) * 10 * scale, 120 * scale);
         if (this.list.length === 0) {
           game.framesSinceLastPipe++;
         }
@@ -379,9 +421,9 @@
             const maxAttempts = 10;
             while (!canSpawn && attempts < maxAttempts) {
               // New range: from (pipeGap/2 + 10) to (canvas.height - pipeGap/2 - 10)
-              baseCenterY = Math.random() * (canvas.height - (config.pipeGap + 20 * scale)) + (config.pipeGap/2 + 10 * scale);
-              const topY = baseCenterY - config.pipeGap / 2;
-              const bottomY = baseCenterY + config.pipeGap / 2;
+              baseCenterY = Math.random() * (canvas.height - (gap + 20 * scale)) + (gap/2 + 10 * scale);
+              const topY = baseCenterY - gap / 2;
+              const bottomY = baseCenterY + gap / 2;
               if (topY > config.birdSize + 10 * scale && bottomY < canvas.height - (config.birdSize + 10 * scale)) {
                 canSpawn = true;
               }
@@ -389,12 +431,12 @@
             }
             if (canSpawn) {
               for (let i = 0; i < pipesToSpawn; i++) {
-                const centerY = Math.max(config.pipeGap / 2 + 10 * scale,
-                  Math.min(baseCenterY + (Math.random() * 100 * scale - 50 * scale), canvas.height - config.pipeGap / 2 - 10 * scale));
+                const centerY = Math.max(gap / 2 + 10 * scale,
+                  Math.min(baseCenterY + (Math.random() * 100 * scale - 50 * scale), canvas.height - gap / 2 - 10 * scale));
                 this.list.push({
                   x: canvas.width + (i * (config.pipeWidth + 20 * scale)),
-                  topY: centerY - config.pipeGap / 2,
-                  bottomY: centerY + config.pipeGap / 2,
+                  topY: centerY - gap / 2,
+                  bottomY: centerY + gap / 2,
                   scored: false
                 });
               }
@@ -412,6 +454,7 @@
           if (!pipe.scored && pipe.x + config.pipeWidth < bird.x) {
             pipe.scored = true;
             game.score++;
+            playBeep(800, 80);
           }
         }
         this.list = this.list.filter(pipe => pipe.x + config.pipeWidth > 0);
@@ -525,6 +568,52 @@
       }
     }
 
+    function updateStars() {
+      if (game.frameCount % 400 === 0) {
+        spawnStar();
+      }
+      for (const star of stars) {
+        star.x -= game.currentPipeSpeed;
+        if (!star.collected) {
+          const dist = Math.hypot(bird.x - star.x, bird.y - star.y);
+          if (dist < star.size + bird.width/2) {
+            star.collected = true;
+            game.score += 5;
+            playBeep(1000, 120);
+          }
+        }
+      }
+      for (let i = stars.length - 1; i >= 0; i--) {
+        if (stars[i].x + stars[i].size < 0 || stars[i].collected) {
+          stars.splice(i, 1);
+        }
+      }
+    }
+
+    function drawStarShape(x, y, r) {
+      ctx.beginPath();
+      ctx.moveTo(x, y - r);
+      for (let i = 1; i < 5; i++) {
+        ctx.lineTo(
+          x + r * Math.sin((i * 72 - 18) * Math.PI / 180),
+          y - r * Math.cos((i * 72 - 18) * Math.PI / 180)
+        );
+        ctx.lineTo(
+          x + r * 0.5 * Math.sin((i * 72 + 18) * Math.PI / 180),
+          y - r * 0.5 * Math.cos((i * 72 + 18) * Math.PI / 180)
+        );
+      }
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    function drawStars() {
+      ctx.fillStyle = '#FFD700';
+      for (const star of stars) {
+        drawStarShape(star.x, star.y, star.size);
+      }
+    }
+
     function drawScore() {
       try {
         ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
@@ -604,11 +693,19 @@
       try {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         drawBackground();
-        if (game.state === GAME_STATE.PLAYING) {
+        if (game.paused) {
+          pipes.draw();
+          updateStars();
+          drawStars();
+          bird.draw();
+          drawScore();
+        } else if (game.state === GAME_STATE.PLAYING) {
           game.frameCount++;
           bird.update();
           pipes.update();
+          updateStars();
           pipes.draw();
+          drawStars();
           bird.draw();
           drawScore();
         } else if (game.state === GAME_STATE.READY) {
@@ -707,6 +804,19 @@
         event.preventDefault();
         if (game.state === GAME_STATE.PLAYING) {
           gameOver();
+        }
+      }
+      if (event.code === 'KeyP') {
+        event.preventDefault();
+        if (game.state === GAME_STATE.PLAYING) {
+          game.paused = !game.paused;
+          if (game.paused) {
+            instructions.textContent = 'PAUSED - PRESS P TO RESUME';
+            instructions.style.display = 'block';
+          } else {
+            instructions.textContent = 'SPACE/CLICK TO FLAP - P TO PAUSE - COLLECT \u2605 FOR BONUS POINTS - SCORE 20 FOR NEW COLORS';
+            instructions.style.display = 'none';
+          }
         }
       }
     });
